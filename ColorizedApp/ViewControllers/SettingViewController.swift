@@ -32,45 +32,69 @@ class SettingViewController: UIViewController {
         redTextField.delegate = self
         greenTextField.delegate = self
         blueTextField.delegate = self
-        
-        viewColor.layer.cornerRadius = 10
-        viewColor.backgroundColor = backgroundColorMain
+
+        updateUI()
     }
+    
 // MARK: - IBActions
     
     @IBAction func doneButton() {
-        let color = UIColor(red: CGFloat(redSlider.value),
-                            green: CGFloat(greenSlider.value),
-                            blue: CGFloat(blueSlider.value),
-                            alpha: 1.0)
+        let color = UIColor(
+            red: CGFloat(redSlider.value),
+            green: CGFloat(greenSlider.value),
+            blue: CGFloat(blueSlider.value),
+            alpha: 1.0
+        )
         delegate.setNewColorView(color: color)
-        
         dismiss(animated: true)
     }
-    
     
     @IBAction func rgbSlidersActions(_ sender: UISlider) {
         switch sender.tag {
         case 0:
-            setLabel(from: sender, to: redLabel, title: "R")
-            setTextField(from: sender, to: redTextField)
-            setColorView()
+            setValues(from: sender, toLabel: redLabel, toTextField: redTextField)
         case 1:
-            setLabel(from: sender, to: greenLabel, title: "G")
-            setTextField(from: sender, to: greenTextField)
-            setColorView()
+            setValues(from: sender, toLabel: greenLabel, toTextField: greenTextField)
         case 2:
-            setLabel(from: sender, to: blueLabel, title: "B")
-            setTextField(from: sender, to: blueTextField)
-            setColorView()
+            setValues(from: sender, toLabel: blueLabel, toTextField: blueTextField)
         default:
             break
         }
-        
+        setColorView()
     }
     
 // MARK: - Private methods
     
+    private func updateUI() {
+        
+        addToolBarDone(textField: redTextField)
+        addToolBarDone(textField: greenTextField)
+        addToolBarDone(textField: blueTextField)
+        
+        guard let colorsBackground = backgroundColorMain?.cgColor.components else { return }
+        viewColor.backgroundColor = backgroundColorMain
+        viewColor.layer.cornerRadius = 10
+        
+        let colors = [Float(colorsBackground[0]),
+                      Float(colorsBackground[1]),
+                      Float(colorsBackground[2])
+        ]
+        let sliders = [redSlider, greenSlider, blueSlider]
+        let labels = [redLabel, greenLabel, blueLabel]
+        let textFields = [redTextField, greenTextField, blueTextField]
+
+        for (value, slider) in zip(colors, sliders) {
+            slider?.value = value
+        }
+        for (value, label) in zip(colors, labels) {
+            label?.text = String(format: "%1.2f", value )
+        }
+        for (value, textfield) in zip(colors, textFields) {
+            textfield?.text = String(format: "%1.2f", value )
+        }
+    }
+    
+    // редактирование цвета View
     private func setColorView() {
         viewColor.backgroundColor = UIColor(
             red: CGFloat(redSlider.value),
@@ -79,49 +103,50 @@ class SettingViewController: UIViewController {
             alpha: 1.0
         )
     }
-    
-    
-    // при редактировании текстового поля, меняем значение слайдера
-    private func setSlider(from textField: UITextField, to slider: UISlider) {
-        guard let textFloat = Float(textField.text ?? "0") else { return }
-        slider.value = textFloat
-    }
-    
-    // при редактировании слайдера и текстового поля
-    private func setLabel(from slider: UISlider, to label: UILabel, title: String? = nil) {
-        guard let title = title else { return }
-        label.text = String(format: "%@: %1.2f", title, slider.value)
-    }
-    
-    private func setLabel(from textField: UITextField, to label: UILabel, title: String? = nil) {
-        guard let text = textField.text else { return }
-        guard let title = title else { return }
-        label.text = String(format: "%@: %@", title, text)
-    }
-    
-    private func setTextField(from slider: UISlider, to textField: UITextField) {
-        textField.text = String(format: "%1.2f", slider.value)
+    // присвоение значений для label и textfield
+    private func setValues(from slider: UISlider, toLabel: UILabel, toTextField: UITextField? = nil) {
+        let text = String(format: "%1.2f", slider.value)
+        guard let toTextField = toTextField else {
+            toLabel.text = text
+            return
+        }
+        toLabel.text = text
+        toTextField.text = text
     }
 }
 
 extension SettingViewController: UITextFieldDelegate {
     
     func textFieldDidEndEditing(_ textField: UITextField) {
-        
+        // если поле пустое, меняем на "0.00"
         textField.text = textField.text!.isEmpty ? "0.00" : textField.text
+        guard let floatFromTextField = Float(textField.text ?? "0") else { return }
         
         if textField == redTextField {
-            setSlider(from: textField, to: redSlider)
-            setLabel(from: textField, to: redLabel, title: "R")
-            
+            redSlider.setValue(floatFromTextField, animated: true)
+            setValues(from: redSlider, toLabel: redLabel)
         } else if textField == greenTextField {
-            setSlider(from: textField, to: greenSlider)
-            setLabel(from: textField, to: greenLabel, title: "G")
-            
+            greenSlider.setValue(floatFromTextField, animated: true)
+            setValues(from: greenSlider, toLabel: greenLabel)
         } else if textField == blueTextField {
-            setSlider(from: textField, to: blueSlider)
-            setLabel(from: textField, to: blueLabel, title: "B")
+            blueSlider.setValue(floatFromTextField, animated: true)
+            setValues(from: blueSlider, toLabel: blueLabel)
         }
         setColorView()
+    }
+    
+    func addToolBarDone(textField: UITextField) {
+        
+        let toolBar = UIToolbar(frame: CGRect(x: 0, y: 0, width: self.view.frame.size.width, height: 50))
+        let flexibleSpace = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: self, action: nil)
+        let doneButton = UIBarButtonItem(title: "Done", style: .done, target: self, action: #selector(donePressed))
+        
+        toolBar.items = [flexibleSpace ,doneButton]
+        toolBar.sizeToFit()
+        textField.inputAccessoryView = toolBar
+    }
+    
+    @objc func donePressed() {
+        view.endEditing(true)
     }
 }
